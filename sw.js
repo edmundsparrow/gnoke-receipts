@@ -1,5 +1,5 @@
-/* Gnoke Ledger — Service Worker v1 */
-const CACHE = 'gnoke-ledger-v1';
+/* Gnoke Receipt — Service Worker v1 */
+const CACHE = 'gnoke-receipt-v1.1';
 const ASSETS = [
   './',
   './index.html',
