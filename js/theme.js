@@ -1,5 +1,5 @@
 /**
- * theme.js — Gnoke Ledger
+ * theme.js — Gnoke Receipt
  * Apply + toggle dark/light theme.
  * Anti-FOUC script in <head> reads the same key.
  */

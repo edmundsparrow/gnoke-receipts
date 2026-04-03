@@ -1,5 +1,5 @@
 /**
- * db.js — Gnoke Ledger
+ * db.js — Gnoke Receipt
  * All data operations. sql.js (WASM) persisted to IndexedDB.
  * Loaded on every page before any app logic.
  *

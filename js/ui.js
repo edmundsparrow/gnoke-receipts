@@ -1,5 +1,5 @@
 /**
- * ui.js — Gnoke Ledger
+ * ui.js — Gnoke Receipt
  * Toast · Drawer · Status chip · Loading overlay
  */
 
