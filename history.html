@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>History — Gnoke Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="global.png">
+<link rel="apple-touch-icon" href="global.png">
+<link rel="manifest" href="manifest.json">
+<script>(function(){var t=localStorage.getItem('gnoke_ledger_theme');if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+body{padding-bottom:48px}
+
+/* Stats bar */
+.stats-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;gap:0}
+.stat{flex:1;text-align:center;padding:4px 0}
+.stat:not(:last-child){border-right:1px solid var(--border)}
+.stat-lbl{font-family:var(--font-mono);font-size:.6rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+.stat-val{font-family:var(--font-mono);font-size:1rem;font-weight:500;color:var(--accent);margin-top:3px}
+
+/* Search */
+.search-bar{padding:14px 18px 0;max-width:680px;margin:0 auto;display:flex;gap:8px}
+.search-wrap{flex:1;position:relative}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+#search-input{width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px 10px 32px;font-size:.85rem;color:var(--text);outline:none;transition:border-color var(--ease)}
+#search-input:focus{border-color:var(--accent)}
+#search-input::placeholder{color:#bbb}
+#date-filter{background:var(--surface);border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:.8rem;font-family:var(--font-mono);color:var(--text);outline:none;-webkit-appearance:none;flex-shrink:0;transition:border-color var(--ease)}
+#date-filter:focus{border-color:var(--accent)}
+
+/* List */
+.list-wrap{max-width:680px;margin:0 auto;padding:14px 18px}
+.receipt-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;transition:border-color .2s}
+.receipt-item.expanded{border-color:var(--accent);box-shadow:0 2px 14px var(--accent-dim)}
+.receipt-row{display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px}
+.receipt-num{font-family:var(--font-mono);font-size:.8rem;font-weight:500;color:var(--accent)}
+.receipt-customer{font-size:.92rem;font-weight:500;margin-top:3px;color:var(--text)}
+.receipt-date{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);margin-top:2px}
+.receipt-amount{font-family:var(--font-mono);font-size:1rem;font-weight:500;color:var(--text);flex-shrink:0}
+.chevron{color:var(--muted);font-size:11px;transition:transform .2s;flex-shrink:0}
+.receipt-item.expanded .chevron{transform:rotate(180deg)}
+
+/* Detail panel */
+.detail-panel{display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.receipt-item.expanded .detail-panel{display:block}
+.items-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:12px}
+.items-table th{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.12em;color:var(--muted);text-align:left;padding:5px 6px;border-bottom:1px solid var(--border)}
+.items-table td{padding:6px;border-bottom:1px solid rgba(0,0,0,.04);color:var(--text)}
+.items-table tr:last-child td{border:none}
+.items-table .total-row td{font-family:var(--font-mono);font-weight:500;color:var(--accent);border-top:1px solid var(--border);padding-top:8px}
+.detail-actions{display:flex;gap:8px}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px}
+.empty-icon{font-size:44px;margin-bottom:12px}
+.empty-title{font-family:var(--font-display);font-size:1.3rem;color:var(--text);margin-bottom:6px}
+.empty-sub{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+  <span class="loader-text">Loading…</span>
+</div>
+
+<!-- Topbar -->
+<div id="topbar">
+  <button id="hamburger" onclick="Drawer.open()">☰</button>
+  <div id="brand"><span id="brand-gnoke">Gnoke</span><span id="brand-app">Ledger</span></div>
+  <span id="context-info">History</span>
+  <div class="topbar-spacer"></div>
+  <nav class="desktop-nav">
+    <a href="receipt.html" class="dnav">✦ Create</a>
+    <a href="history.html" class="dnav active">☰ History</a>
+    <a href="preview.html" class="dnav">▣ Preview</a>
+    <a href="settings.html" class="dnav">⚙ Settings</a>
+  </nav>
+  <div id="topbar-right">
+    <span id="status-chip">saved</span>
+    <button class="icon-btn" id="theme-toggle">🌙</button>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+<nav id="drawer">
+  <div id="drawer-header">
+    <div id="drawer-brand"><span id="drawer-gnoke">Gnoke</span><span id="drawer-app">Ledger</span></div>
+    <button id="drawer-close" onclick="Drawer.close()">✕</button>
+  </div>
+  <div class="drawer-section">Navigate</div>
+  <a class="drawer-btn" href="receipt.html">✦ Create Receipt</a>
+  <a class="drawer-btn active" href="history.html">☰ History</a>
+  <a class="drawer-btn" href="preview.html">▣ Preview</a>
+  <div class="drawer-section">App</div>
+  <a class="drawer-btn" href="settings.html">⚙ Settings</a>
+</nav>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat"><div class="stat-lbl">Receipts</div><div class="stat-val" id="stat-count">0</div></div>
+  <div class="stat"><div class="stat-lbl">Revenue</div><div class="stat-val" id="stat-revenue">₦0</div></div>
+  <div class="stat"><div class="stat-lbl">Avg. Sale</div><div class="stat-val" id="stat-avg">₦0</div></div>
+</div>
+
+<!-- Search -->
+<div class="search-bar">
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="Search receipts or customers…">
+  </div>
+  <select id="date-filter">
+    <option value="all">All Time</option>
+    <option value="today">Today</option>
+    <option value="week">This Week</option>
+    <option value="month">This Month</option>
+    <option value="year">This Year</option>
+  </select>
+</div>
+
+<div class="list-wrap" id="list-wrap"></div>
+<div id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/ui.js"></script>
+<script>
+let expandedId = null;
+
+function fmt(n) {
+  return '₦' + parseFloat(n).toLocaleString('en-NG', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function renderList() {
+  const q     = document.getElementById('search-input').value.trim();
+  const range = document.getElementById('date-filter').value;
+  const rows  = [...DB.searchReceipts(q, range)].reverse(); // newest first
+
+  // Stats
+  const total = rows.reduce((s,r) => s + r.total, 0);
+  document.getElementById('stat-count').textContent   = rows.length;
+  document.getElementById('stat-revenue').textContent = '₦' + total.toLocaleString('en-NG',{maximumFractionDigits:0});
+  document.getElementById('stat-avg').textContent     = rows.length ? '₦' + (total/rows.length).toLocaleString('en-NG',{maximumFractionDigits:0}) : '₦0';
+
+  const wrap = document.getElementById('list-wrap');
+  if (!rows.length) {
+    wrap.innerHTML = `<div class="empty">
+      <div class="empty-icon">🔍</div>
+      <h3 class="empty-title">${q ? 'No results' : 'No receipts yet'}</h3>
+      <p class="empty-sub">${q ? 'Try adjusting your search' : 'Create your first receipt to get started'}</p>
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = '';
+  rows.forEach(r => {
+    const isExp  = expandedId === r.id;
+    const detail = isExp ? buildDetail(r.id) : '';
+    const div    = document.createElement('div');
+    div.className = 'receipt-item' + (isExp ? ' expanded' : '');
+    div.innerHTML = `
+      <div class="receipt-row" onclick="toggle(${r.id})">
+        <div>
+          <div class="receipt-num">${r.receipt_number}</div>
+          <div class="receipt-customer">${r.customer_name}</div>
+          <div class="receipt-date">${r.date_display}${r.customer_phone ? ' · '+r.customer_phone : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="receipt-amount">${fmt(r.total)}</span>
+          <span class="chevron">▾</span>
+        </div>
+      </div>
+      <div class="detail-panel">${detail}</div>`;
+    wrap.appendChild(div);
+  });
+}
+
+function buildDetail(id) {
+  const data = DB.getReceiptWithItems(id);
+  if (!data) return '';
+  const {receipt, items} = data;
+  const rows = items.map(i =>
+    `<tr><td>${i.name}</td><td>${i.qty}</td><td>₦${i.rate}</td><td>${fmt(i.amount)}</td></tr>`
+  ).join('');
+  return `
+    <table class="items-table">
+      <thead><tr><th>Item</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row"><td colspan="3">Total</td><td>${fmt(receipt.total)}</td></tr>
+      </tbody>
+    </table>
+    <div class="detail-actions">
+      <a class="btn btn-primary" href="preview.html?id=${id}">Preview & Print</a>
+      <button class="btn btn-danger" onclick="confirmDelete(${id})">Delete</button>
+    </div>`;
+}
+
+function toggle(id) {
+  expandedId = expandedId === id ? null : id;
+  renderList();
+}
+
+async function confirmDelete(id) {
+  if (!confirm('Delete this receipt? This cannot be undone.')) return;
+  await DB.deleteReceipt(id);
+  if (expandedId === id) expandedId = null;
+  toast('Receipt deleted', 'info');
+  renderList();
+}
+
+async function init() {
+  setLoading(true);
+  await DB.init();
+  setLoading(false);
+  renderList();
+}
+
+document.getElementById('search-input').addEventListener('input', renderList);
+document.getElementById('date-filter').addEventListener('change', renderList);
+
+init();
+</script>
+</body>
+</html>

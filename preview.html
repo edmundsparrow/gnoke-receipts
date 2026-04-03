@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Preview — Gnoke Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="global.png">
+<link rel="apple-touch-icon" href="global.png">
+<link rel="manifest" href="manifest.json">
+<script>(function(){var t=localStorage.getItem('gnoke_ledger_theme');if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+body{padding-bottom:48px}
+
+/* Select bar */
+.select-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;overflow-x:auto}
+.select-lbl{font-family:var(--font-mono);font-size:.62rem;color:var(--muted);letter-spacing:.14em;white-space:nowrap;flex-shrink:0}
+#receipt-picker{background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:8px 12px;font-size:.8rem;font-family:var(--font-mono);color:var(--text);outline:none;-webkit-appearance:none;max-width:260px;flex:1}
+#receipt-picker:focus{border-color:var(--accent)}
+.print-btn{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:.78rem;font-family:var(--font-mono);cursor:pointer;white-space:nowrap;flex-shrink:0;letter-spacing:.06em;transition:filter .2s}
+.print-btn:hover{filter:brightness(.9)}
+
+/* Paper */
+.paper-wrap{max-width:440px;margin:20px auto;padding:0 18px}
+.paper{background:#fff;border-radius:4px;box-shadow:0 2px 20px rgba(0,0,0,.08),0 0 0 1px rgba(0,0,0,.04);padding:28px 24px;font-size:13px;color:#1a1a1a}
+
+/* Receipt header */
+.r-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:16px;border-bottom:2px solid #1a1a1a}
+.r-logo{width:56px;height:56px;object-fit:contain;border-radius:4px}
+.r-logo-ph{width:56px;height:56px;border-radius:4px;background:#f0ece6;display:flex;align-items:center;justify-content:center;font-size:22px}
+.r-biz-name{font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:#1a1a1a;line-height:1.2}
+.r-biz-addr{font-size:10px;color:#666;margin-top:3px;max-width:200px}
+.r-biz-web{font-family:'DM Mono',monospace;font-size:9px;color:#2a7a52;margin-top:2px}
+
+/* Meta */
+.r-meta{display:flex;justify-content:space-between;margin-bottom:14px}
+.r-meta-block p{font-family:'DM Mono',monospace;font-size:10px;color:#333;margin-bottom:2px}
+.r-meta-block p strong{color:#1a1a1a}
+
+.r-divider{border:none;border-top:1px dashed #ddd;margin:12px 0}
+
+/* Items table */
+.r-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.r-table th{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.18em;color:#666;text-align:left;padding:5px 0;border-bottom:1px solid #e0dbd4}
+.r-table th:not(:first-child){text-align:right}
+.r-table td{padding:6px 0;font-size:12px;border-bottom:1px solid #f5f5f5;color:#1a1a1a}
+.r-table td:not(:first-child){text-align:right;font-family:'DM Mono',monospace}
+.r-table .total-row td{padding-top:10px;font-family:'DM Mono',monospace;font-size:15px;font-weight:500;color:#2a7a52;border-top:2px solid #1a1a1a;border-bottom:none}
+
+/* Footer */
+.r-footer{margin-top:16px;padding-top:12px;border-top:1px dashed #ddd}
+.r-contacts{display:flex;flex-wrap:wrap;gap:4px 14px;margin-bottom:6px}
+.r-contact{font-family:'DM Mono',monospace;font-size:10px;color:#555}
+.r-social{font-family:'DM Mono',monospace;font-size:10px;color:#555;display:flex;flex-wrap:wrap;gap:4px 12px}
+.r-thanks{text-align:center;font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#333;margin-top:14px;padding-top:12px;border-top:1px solid #eee}
+.r-powered{text-align:center;font-family:'DM Mono',monospace;font-size:9px;color:#bbb;margin-top:6px;letter-spacing:.14em}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px}
+.empty-icon{font-size:44px;margin-bottom:12px}
+.empty-title{font-family:var(--font-display);font-size:1.3rem;color:var(--text);margin-bottom:6px}
+.empty-sub{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);letter-spacing:.08em}
+
+/* Print */
+@media print{
+  #topbar,.select-bar,#drawer,#drawer-overlay,#toast,#loading-overlay{display:none!important}
+  body{padding:0;background:#fff}
+  .paper-wrap{margin:0;padding:0;max-width:100%}
+  .paper{box-shadow:none;border-radius:0;padding:20px}
+}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+  <span class="loader-text">Loading…</span>
+</div>
+
+<!-- Topbar -->
+<div id="topbar">
+  <button id="hamburger" onclick="Drawer.open()">☰</button>
+  <div id="brand"><span id="brand-gnoke">Gnoke</span><span id="brand-app">Ledger</span></div>
+  <span id="context-info">Preview</span>
+  <div class="topbar-spacer"></div>
+  <nav class="desktop-nav">
+    <a href="receipt.html" class="dnav">✦ Create</a>
+    <a href="history.html" class="dnav">☰ History</a>
+    <a href="preview.html" class="dnav active">▣ Preview</a>
+    <a href="settings.html" class="dnav">⚙ Settings</a>
+  </nav>
+  <div id="topbar-right">
+    <span id="status-chip">saved</span>
+    <button class="icon-btn" id="theme-toggle">🌙</button>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+<nav id="drawer">
+  <div id="drawer-header">
+    <div id="drawer-brand"><span id="drawer-gnoke">Gnoke</span><span id="drawer-app">Ledger</span></div>
+    <button id="drawer-close" onclick="Drawer.close()">✕</button>
+  </div>
+  <div class="drawer-section">Navigate</div>
+  <a class="drawer-btn" href="receipt.html">✦ Create Receipt</a>
+  <a class="drawer-btn" href="history.html">☰ History</a>
+  <a class="drawer-btn active" href="preview.html">▣ Preview</a>
+  <div class="drawer-section">App</div>
+  <a class="drawer-btn" href="settings.html">⚙ Settings</a>
+</nav>
+
+<!-- Select bar -->
+<div class="select-bar">
+  <span class="select-lbl">Receipt:</span>
+  <select id="receipt-picker" onchange="loadReceipt(parseInt(this.value))">
+    <option value="">Select a receipt…</option>
+  </select>
+  <button class="print-btn" onclick="window.print()">🖨 Print</button>
+</div>
+
+<div class="paper-wrap" id="paper-area">
+  <div class="empty">
+    <div class="empty-icon">🧾</div>
+    <h3 class="empty-title">No receipt selected</h3>
+    <p class="empty-sub">Choose one from the dropdown above</p>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const SOCIAL_EMOJI = {instagram:'📸',twitter:'🐦',facebook:'👥',linkedin:'💼',tiktok:'🎵',youtube:'▶️',telegram:'🔗',snapchat:'👻'};
+
+function fmt2(n) {
+  return parseFloat(n).toLocaleString('en-NG', {minimumFractionDigits:2});
+}
+
+function renderPaper(id) {
+  const data = DB.getReceiptWithItems(id);
+  if (!data) return;
+  const {receipt, items} = data;
+  const biz    = DB.getAllBusiness();
+  const logo   = biz.logo || '';
+  const social = JSON.parse(biz.social || '[]');
+
+  const logoHTML = logo
+    ? `<img class="r-logo" src="${logo}" alt="Logo">`
+    : `<div class="r-logo-ph">🏪</div>`;
+
+  const itemsHTML = items.map(i => `
+    <tr>
+      <td>${i.name}</td>
+      <td>${i.qty}</td>
+      <td>₦${fmt2(i.rate)}</td>
+      <td>₦${fmt2(i.amount)}</td>
+    </tr>`).join('');
+
+  const contactsHTML = [
+    biz.phone    ? `<span class="r-contact">📞 ${biz.phone}</span>` : '',
+    biz.whatsapp ? `<span class="r-contact">💬 ${biz.whatsapp}</span>` : '',
+    biz.email    ? `<span class="r-contact">📧 ${biz.email}</span>` : '',
+  ].filter(Boolean).join('');
+
+  const socialHTML = social.map(s =>
+    `<span class="r-contact">${SOCIAL_EMOJI[s.platform]||'🔗'} ${s.platform.toUpperCase()}: ${s.handle}</span>`
+  ).join('');
+
+  document.getElementById('paper-area').innerHTML = `
+    <div class="paper">
+      <div class="r-header">
+        <div>
+          <div class="r-biz-name">${(biz.company_name||'YOUR BUSINESS').toUpperCase()}</div>
+          <div class="r-biz-addr">${biz.address||''}</div>
+          ${biz.website ? `<div class="r-biz-web">🌐 ${biz.website}</div>` : ''}
+        </div>
+        ${logoHTML}
+      </div>
+
+      <div class="r-meta">
+        <div class="r-meta-block">
+          <p><strong>CUSTOMER:</strong> ${receipt.customer_name}</p>
+          ${receipt.customer_phone ? `<p><strong>PHONE:</strong> ${receipt.customer_phone}</p>` : ''}
+        </div>
+        <div class="r-meta-block" style="text-align:right">
+          <p><strong>DATE:</strong> ${receipt.date_display}</p>
+          <p><strong>RECEIPT:</strong> ${receipt.receipt_number}</p>
+        </div>
+      </div>
+
+      <table class="r-table">
+        <thead><tr><th>ITEM</th><th>QTY</th><th>RATE</th><th>AMOUNT</th></tr></thead>
+        <tbody>
+          ${itemsHTML}
+          <tr class="total-row">
+            <td colspan="3">TOTAL</td>
+            <td>₦${fmt2(receipt.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="r-divider">
+      <div class="r-footer">
+        ${contactsHTML ? `<div class="r-contacts">${contactsHTML}</div>` : ''}
+        ${socialHTML   ? `<div class="r-social">${socialHTML}</div>` : ''}
+      </div>
+      <p class="r-thanks">Thank you for your patronage!</p>
+      <p class="r-powered">GNOKE LEDGER · v1.0</p>
+    </div>`;
+}
+
+function loadReceipt(id) {
+  if (!id) return;
+  renderPaper(id);
+}
+
+async function init() {
+  setLoading(true);
+  await DB.init();
+  setLoading(false);
+
+  const all    = DB.getAllReceipts();
+  const picker = document.getElementById('receipt-picker');
+
+  // Populate picker (newest first)
+  [...all].reverse().forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = `${r.receipt_number} — ${r.customer_name} · ₦${r.total.toLocaleString('en-NG',{maximumFractionDigits:0})}`;
+    picker.appendChild(opt);
+  });
+
+  // Check if arriving from history with ?id=
+  const urlId = new URLSearchParams(location.search).get('id');
+  if (urlId) {
+    picker.value = urlId;
+    loadReceipt(parseInt(urlId));
+  } else if (all.length) {
+    // Default to latest
+    const latest = all[all.length - 1];
+    picker.value = latest.id;
+    renderPaper(latest.id);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

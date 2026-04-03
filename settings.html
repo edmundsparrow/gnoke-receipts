@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Settings — Gnoke Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="global.png">
+<link rel="apple-touch-icon" href="global.png">
+<link rel="manifest" href="manifest.json">
+<script>(function(){var t=localStorage.getItem('gnoke_ledger_theme');if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+body{padding-bottom:48px}
+
+/* Settings row */
+.setting-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border-bottom:none}
+.setting-info{flex:1}
+.setting-lbl{font-size:.9rem;font-weight:500;color:var(--text)}
+.setting-desc{font-family:var(--font-mono);font-size:.68rem;color:var(--muted);margin-top:3px}
+
+/* Toggle switch */
+.toggle-wrap{display:flex;align-items:center;gap:10px}
+.toggle{position:relative;width:42px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:24px;cursor:pointer;transition:background .2s}
+.toggle input:checked + .toggle-track{background:var(--accent)}
+.toggle-track::after{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.toggle input:checked + .toggle-track::after{transform:translateX(18px)}
+
+/* About card */
+.about-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.about-card + .about-card{margin-top:14px}
+.about-card a{color:var(--accent);text-decoration:none}
+.about-card a:hover{text-decoration:underline}
+.app-badge{display:inline-flex;align-items:baseline;gap:5px;margin-bottom:8px}
+.badge-gnoke{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--accent)}
+.badge-name{font-family:var(--font-display);font-size:1.25rem;font-weight:700;color:var(--text)}
+.badge-ver{font-family:var(--font-mono);font-size:.62rem;color:var(--muted);margin-left:4px}
+.tech-stack{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tech-tag{font-family:var(--font-mono);font-size:.62rem;letter-spacing:.06em;background:var(--accent-lt);color:var(--accent);padding:3px 8px;border-radius:20px}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+  <span class="loader-text">Loading…</span>
+</div>
+
+<!-- Topbar -->
+<div id="topbar">
+  <button id="hamburger" onclick="Drawer.open()">☰</button>
+  <div id="brand"><span id="brand-gnoke">Gnoke</span><span id="brand-app">Ledger</span></div>
+  <span id="context-info">Settings</span>
+  <div class="topbar-spacer"></div>
+  <nav class="desktop-nav">
+    <a href="receipt.html" class="dnav">✦ Create</a>
+    <a href="history.html" class="dnav">☰ History</a>
+    <a href="preview.html" class="dnav">▣ Preview</a>
+    <a href="settings.html" class="dnav active">⚙ Settings</a>
+  </nav>
+  <div id="topbar-right">
+    <span id="status-chip">saved</span>
+    <button class="icon-btn" id="theme-toggle">🌙</button>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+<nav id="drawer">
+  <div id="drawer-header">
+    <div id="drawer-brand"><span id="drawer-gnoke">Gnoke</span><span id="drawer-app">Ledger</span></div>
+    <button id="drawer-close" onclick="Drawer.close()">✕</button>
+  </div>
+  <div class="drawer-section">Navigate</div>
+  <a class="drawer-btn" href="receipt.html">✦ Create Receipt</a>
+  <a class="drawer-btn" href="history.html">☰ History</a>
+  <a class="drawer-btn" href="preview.html">▣ Preview</a>
+  <div class="drawer-section">App</div>
+  <a class="drawer-btn active" href="settings.html">⚙ Settings</a>
+</nav>
+
+<!-- Content -->
+<div class="page-content">
+  <div class="page-header"><div><h1>Settings</h1><p class="sub">Configure Gnoke Ledger</p></div></div>
+
+  <!-- Business profile section -->
+  <p class="card-label">Business</p>
+  <div class="form-card" style="margin-bottom:24px">
+    <div class="setting-row" style="padding-top:0">
+      <div class="setting-info">
+        <div class="setting-lbl">Business Profile</div>
+        <div class="setting-desc" id="biz-name-label">Loading…</div>
+      </div>
+      <a class="btn btn-outline" href="setup.html?mode=edit">Edit →</a>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-lbl">Receipt Prefix</div>
+        <div class="setting-desc">RCP-00001 format</div>
+      </div>
+      <span class="btn btn-ghost" style="pointer-events:none;font-family:var(--font-mono);font-size:.75rem">RCP-</span>
+    </div>
+  </div>
+
+  <!-- Appearance section -->
+  <p class="card-label">Appearance</p>
+  <div class="form-card" style="margin-bottom:24px">
+    <div class="setting-row" style="padding-top:0">
+      <div class="setting-info">
+        <div class="setting-lbl">Dark Mode</div>
+        <div class="setting-desc">Switch between light and dark</div>
+      </div>
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="dark-toggle">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Data section -->
+  <p class="card-label">Data</p>
+  <div class="form-card" style="margin-bottom:24px">
+    <div class="setting-row" style="padding-top:0">
+      <div class="setting-info">
+        <div class="setting-lbl">Export Database</div>
+        <div class="setting-desc">Download a backup of all receipts</div>
+      </div>
+      <button class="btn btn-outline" id="export-btn">Export</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-lbl">Receipt Count</div>
+        <div class="setting-desc">Total receipts stored locally</div>
+      </div>
+      <span class="btn btn-ghost" id="receipt-count" style="pointer-events:none;font-family:var(--font-mono)">0</span>
+    </div>
+  </div>
+
+  <!-- About -->
+  <p class="card-label">About</p>
+
+  <div class="about-card">
+    <div class="app-badge">
+      <span class="badge-gnoke">Gnoke</span>
+      <span class="badge-name">Ledger</span>
+      <span class="badge-ver">v1.0</span>
+    </div>
+    <p class="hint">Offline-first receipt app for small businesses. No server, no account, no ads. Your data stays on your device.</p>
+    <div class="tech-stack" id="tech-stack"></div>
+  </div>
+
+  <div class="about-card" style="margin-top:14px">
+    <p class="card-label" style="margin-bottom:10px">Author</p>
+    <table class="about-table">
+      <tr>
+        <td>✉ Email</td>
+        <td><a href="mailto:edmundsparrow@gmail.com">edmundsparrow@gmail.com</a></td>
+      </tr>
+      <tr>
+        <td>💬 WhatsApp</td>
+        <td><a href="https://wa.me/2349024054758" target="_blank">+234 902 405 4758</a></td>
+      </tr>
+      <tr>
+        <td>⌥ GitHub</td>
+        <td><a href="https://github.com/edmundsparrow" target="_blank">github.com/edmundsparrow</a></td>
+      </tr>
+      <tr>
+        <td>❤️ Support</td>
+        <td><a href="https://selar.com/showlove/edmundsparrow" target="_blank">selar.com/showlove/edmundsparrow</a></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/ui.js"></script>
+<script>
+function renderTech() {
+  const tags = ['sql.js 1.10.2','IndexedDB','PWA','Offline-first','No account'];
+  document.getElementById('tech-stack').innerHTML = tags
+    .map(t => `<span class="tech-tag">${t}</span>`).join('');
+}
+
+// Dark mode toggle wired to theme.js
+const darkToggle = document.getElementById('dark-toggle');
+darkToggle.addEventListener('change', () => {
+  Theme.apply(darkToggle.checked ? 'dark' : 'light');
+});
+// Sync with current theme
+document.addEventListener('DOMContentLoaded', () => {
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  darkToggle.checked = cur === 'dark';
+});
+
+async function init() {
+  setLoading(true);
+  await DB.init();
+  setLoading(false);
+
+  // Business profile name
+  const name = DB.getBusiness('company_name');
+  document.getElementById('biz-name-label').textContent = name || 'Not set up';
+
+  // Receipt count
+  const count = DB.getAllReceipts().length;
+  document.getElementById('receipt-count').textContent = count;
+
+  renderTech();
+}
+
+// Export backup
+document.getElementById('export-btn').addEventListener('click', () => {
+  const data = JSON.stringify(DB.getAllReceipts(), null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `gnoke-ledger-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  statusChip('Exported');
+  toast('Backup downloaded', 'success');
+});
+
+init();
+</script>
+</body>
+</html>

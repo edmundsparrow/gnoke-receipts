@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>New Receipt — Gnoke Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" type="image/png" href="global.png">
+<link rel="apple-touch-icon" href="global.png">
+<link rel="manifest" href="manifest.json">
+<script>(function(){var t=localStorage.getItem('gnoke_ledger_theme');if(t)document.documentElement.setAttribute('data-theme',t);})()</script>
+<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<style>
+body{padding-bottom:48px}
+
+/* Meta strip */
+.meta-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 18px;display:flex;gap:0}
+.meta-block{flex:1;text-align:center;padding:4px 0}
+.meta-block:not(:last-child){border-right:1px solid var(--border)}
+.meta-lbl{font-family:var(--font-mono);font-size:.62rem;color:var(--muted);letter-spacing:.18em;text-transform:uppercase}
+.meta-val{font-family:var(--font-mono);font-size:.95rem;font-weight:500;color:var(--accent);margin-top:2px}
+
+/* Card */
+.entry-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px}
+
+/* Items grid */
+.items-head{display:grid;grid-template-columns:1fr 58px 82px 82px 30px;gap:6px;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.items-head span{font-family:var(--font-mono);font-size:.6rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;text-align:center}
+.items-head span:first-child{text-align:left}
+.item-row{display:grid;grid-template-columns:1fr 58px 82px 82px 30px;gap:6px;margin-bottom:8px;align-items:center}
+.item-row input{width:100%;background:var(--surface2);border:1.5px solid var(--border);border-radius:7px;padding:8px 9px;font-size:.85rem;color:var(--text);outline:none;text-align:center;transition:border-color var(--ease)}
+.item-row input:first-child{text-align:left}
+.item-row input:focus{border-color:var(--accent)}
+.item-row input::placeholder{color:#ccc;font-size:.75rem}
+.item-amount{font-family:var(--font-mono);font-size:.85rem;color:var(--text);text-align:right;padding-right:2px}
+.del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;text-align:center;padding:4px;transition:color .2s;line-height:1}
+.del-btn:hover{color:var(--danger)}
+.add-item-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:none;border:1.5px dashed var(--border);border-radius:8px;padding:10px;font-size:.85rem;color:var(--muted);cursor:pointer;margin-top:8px;transition:border-color .2s,color .2s}
+.add-item-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* Total row */
+.total-strip{display:flex;justify-content:space-between;align-items:center;padding:14px 0 0;border-top:2px solid var(--border);margin-top:8px}
+.total-lbl{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);letter-spacing:.2em}
+.total-amount{font-family:var(--font-mono);font-size:1.5rem;font-weight:500;color:var(--accent)}
+
+/* Success overlay */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.overlay.show{display:flex}
+.success-card{background:var(--surface);border-radius:16px;padding:32px 28px;text-align:center;max-width:300px;width:100%;animation:popIn .3s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+.success-icon{font-size:44px;margin-bottom:12px}
+.success-title{font-family:var(--font-display);font-size:1.4rem;color:var(--text);margin-bottom:6px}
+.success-sub{font-family:var(--font-mono);font-size:.7rem;color:var(--muted);letter-spacing:.06em;margin-bottom:22px}
+.success-actions{display:flex;flex-direction:column;gap:10px}
+</style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loader-dots"><div class="loader-dot"></div><div class="loader-dot"></div><div class="loader-dot"></div></div>
+  <span class="loader-text">Loading database…</span>
+</div>
+
+<!-- Topbar -->
+<div id="topbar">
+  <button id="hamburger" onclick="Drawer.open()">☰</button>
+  <div id="brand"><span id="brand-gnoke">Gnoke</span><span id="brand-app">Ledger</span></div>
+  <span id="context-info"></span>
+  <div class="topbar-spacer"></div>
+  <nav class="desktop-nav">
+    <a href="receipt.html" class="dnav active">✦ Create</a>
+    <a href="history.html" class="dnav">☰ History</a>
+    <a href="preview.html" class="dnav">▣ Preview</a>
+    <a href="settings.html" class="dnav">⚙ Settings</a>
+  </nav>
+  <div id="topbar-right">
+    <span id="status-chip">saved</span>
+    <button class="icon-btn" id="theme-toggle">🌙</button>
+  </div>
+</div>
+
+<!-- Drawer -->
+<div id="drawer-overlay" onclick="Drawer.close()"></div>
+<nav id="drawer">
+  <div id="drawer-header">
+    <div id="drawer-brand"><span id="drawer-gnoke">Gnoke</span><span id="drawer-app">Ledger</span></div>
+    <button id="drawer-close" onclick="Drawer.close()">✕</button>
+  </div>
+  <div class="drawer-section">Navigate</div>
+  <a class="drawer-btn active" href="receipt.html">✦ Create Receipt</a>
+  <a class="drawer-btn" href="history.html">☰ History</a>
+  <a class="drawer-btn" href="preview.html">▣ Preview</a>
+  <div class="drawer-section">App</div>
+  <a class="drawer-btn" href="settings.html">⚙ Settings</a>
+</nav>
+
+<!-- Meta strip -->
+<div class="meta-strip">
+  <div class="meta-block"><div class="meta-lbl">Date</div><div class="meta-val" id="meta-date">—</div></div>
+  <div class="meta-block"><div class="meta-lbl">Receipt No.</div><div class="meta-val" id="meta-receipt">—</div></div>
+  <div class="meta-block"><div class="meta-lbl">Items</div><div class="meta-val" id="meta-items">0</div></div>
+</div>
+
+<!-- Content -->
+<div class="page-content">
+
+  <!-- Customer -->
+  <div class="entry-card">
+    <p class="card-label">Customer Info</p>
+    <div class="field"><label>Customer Name *</label><input type="text" id="cust-name" placeholder="CUSTOMER NAME" autocomplete="off"></div>
+    <div class="field"><label>Phone Number (optional)</label><input type="tel" id="cust-phone" placeholder="+234 …"></div>
+  </div>
+
+  <!-- Items -->
+  <div class="entry-card">
+    <p class="card-label">Items</p>
+    <div class="items-head">
+      <span>Item</span><span>Qty</span><span>Rate (₦)</span><span>Amount</span><span></span>
+    </div>
+    <div id="items-body"></div>
+    <button class="add-item-btn" id="add-item-btn">＋ Add Item</button>
+    <div class="total-strip">
+      <span class="total-lbl">TOTAL</span>
+      <span class="total-amount">₦<span id="grand-total">0.00</span></span>
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-full" id="save-btn">Save Receipt</button>
+</div>
+
+<!-- Success modal -->
+<div class="overlay" id="overlay">
+  <div class="success-card">
+    <div class="success-icon">✅</div>
+    <h2 class="success-title">Receipt Saved</h2>
+    <p class="success-sub" id="success-ref">—</p>
+    <div class="success-actions">
+      <button class="btn btn-primary btn-full" onclick="window.location.href='preview.html'">Preview &amp; Print</button>
+      <button class="btn btn-ghost btn-full" onclick="window.location.reload()">New Receipt</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="js/db.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/ui.js"></script>
+<script>
+const today = new Date();
+let receiptNumber = '';
+
+async function init() {
+  setLoading(true);
+  await DB.init();
+
+  const name = DB.getBusiness('company_name');
+  if (!name) { window.location.replace('setup.html'); return; }
+
+  document.getElementById('context-info').textContent = name.toUpperCase();
+  document.getElementById('meta-date').textContent =
+    today.toLocaleDateString('en-NG', {day:'2-digit', month:'short', year:'numeric'});
+  receiptNumber = DB.nextReceiptNumber();
+  document.getElementById('meta-receipt').textContent = receiptNumber;
+
+  setLoading(false);
+  addItem(); // Start with one row
+}
+
+// Uppercase customer name
+document.getElementById('cust-name').addEventListener('input', function() {
+  const p = this.selectionStart;
+  this.value = this.value.toUpperCase();
+  this.setSelectionRange(p, p);
+});
+
+// Items
+let itemCount = 0;
+
+function addItem(name='', qty=1, rate=0) {
+  itemCount++;
+  const div = document.createElement('div');
+  div.className = 'item-row';
+  div.innerHTML = `
+    <input type="text" class="item-name" placeholder="Item name" value="${name}">
+    <input type="number" class="item-qty" value="${qty}" min="0" inputmode="decimal">
+    <input type="number" class="item-rate" value="${rate || ''}" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+    <span class="item-amount">${(qty*(rate||0)).toFixed(2)}</span>
+    <button class="del-btn" onclick="removeItem(this)">×</button>`;
+
+  // Uppercase item name
+  div.querySelector('.item-name').addEventListener('input', function() {
+    const p = this.selectionStart; this.value = this.value.toUpperCase(); this.setSelectionRange(p,p);
+  });
+  div.querySelector('.item-qty').addEventListener('input', () => updateRow(div));
+  div.querySelector('.item-rate').addEventListener('input', () => updateRow(div));
+
+  document.getElementById('items-body').appendChild(div);
+  updateMeta();
+}
+
+function removeItem(btn) {
+  btn.closest('.item-row').remove();
+  itemCount = document.querySelectorAll('.item-row').length;
+  updateMeta();
+  recalcTotal();
+}
+
+function updateRow(div) {
+  const qty  = parseFloat(div.querySelector('.item-qty').value) || 0;
+  const rate = parseFloat(div.querySelector('.item-rate').value) || 0;
+  div.querySelector('.item-amount').textContent = (qty * rate).toFixed(2);
+  recalcTotal();
+}
+
+function recalcTotal() {
+  let total = 0;
+  document.querySelectorAll('.item-amount').forEach(el => { total += parseFloat(el.textContent) || 0; });
+  document.getElementById('grand-total').textContent = total.toFixed(2);
+}
+
+function updateMeta() {
+  itemCount = document.querySelectorAll('.item-row').length;
+  document.getElementById('meta-items').textContent = itemCount;
+}
+
+document.getElementById('add-item-btn').addEventListener('click', () => addItem());
+
+// Save
+document.getElementById('save-btn').addEventListener('click', async function() {
+  const custName  = document.getElementById('cust-name').value.trim();
+  const custPhone = document.getElementById('cust-phone').value.trim();
+  if (!custName) { toast('Enter a customer name', 'error'); return; }
+
+  const items = [];
+  document.querySelectorAll('.item-row').forEach(row => {
+    const name   = row.querySelector('.item-name').value.trim();
+    const qty    = parseFloat(row.querySelector('.item-qty').value) || 0;
+    const rate   = parseFloat(row.querySelector('.item-rate').value) || 0;
+    const amount = parseFloat(row.querySelector('.item-amount').textContent) || 0;
+    if (name && qty > 0 && rate > 0) items.push({name, qty, rate, amount});
+  });
+
+  if (!items.length) { toast('Add at least one valid item', 'error'); return; }
+
+  const total = items.reduce((s,i) => s + i.amount, 0);
+
+  this.disabled = true;
+  try {
+    const receipt = {
+      receipt_number: receiptNumber,
+      customer_name:  custName,
+      customer_phone: custPhone,
+      date_display:   today.toLocaleDateString('en-NG', {day:'2-digit',month:'short',year:'numeric'}),
+      date_iso:       today.toISOString().split('T')[0],
+      total:          total,
+    };
+    await DB.saveReceipt(receipt, items);
+    document.getElementById('success-ref').textContent = `${receiptNumber} · ₦${total.toLocaleString('en-NG', {minimumFractionDigits:2})}`;
+    document.getElementById('overlay').classList.add('show');
+    statusChip('saved');
+  } catch(e) {
+    this.disabled = false;
+    toast('Failed to save', 'error');
+  }
+});
+
+init();
+</script>
+</body>
+</html>
