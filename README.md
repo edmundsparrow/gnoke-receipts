@@ -1,4 +1,4 @@
-# Gnoke Ledger
+# Gnoke Receipt
 
 **Professional receipts for small businesses — offline-first.**  
 Part of the **Gnoke Suite** by [Edmund Sparrow](https://github.com/edmundsparrow).
@@ -30,7 +30,7 @@ Issue receipts. Track history. Print clean paper records. All from the browser �
 ## File Structure
 
 ```
-gnoke-ledger/
+gnoke-receipt/
 ├── index.html        Splash + router
 ├── setup.html        Business profile setup (first-run & edit)
 ├── receipt.html      Create a receipt
